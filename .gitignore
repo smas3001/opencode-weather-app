@@ -1,10 +1,17 @@
 # dependencies (bun install)
 node_modules
 
+# runtime data (saved cities / settings)
+weather.json
+
 # output
 out
 dist
 *.tgz
+
+# compiled binary (bun build --compile)
+weather
+weather.exe
 
 # code coverage
 coverage
