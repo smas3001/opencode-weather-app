@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - package.json
+      - bun.lock
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Read package version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(bun -e 'console.log((await Bun.file("package.json").json()).version ?? "")')"
+          if [[ -z "$VERSION" ]]; then
+            echo "::error::package.json must define a version."
+            exit 1
+          fi
+
+          TAG="v${VERSION}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error::${TAG} already exists. Update package.json version before releasing."
+            exit 1
+          fi
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build binary
+        run: bun run build
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Weather CLI ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: weather
+          fail_on_unmatched_files: true
